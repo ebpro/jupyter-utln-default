@@ -1,7 +1,6 @@
 # THE BASE IMAGE
-ARG LAB_BASE=jupyter/base-notebook:lab-4.0.5
-# ARG LAB_BASE=jupyter/minimal-notebook:lab-4.0.2
-# ARG LAB_BASE=jupyter/minimal-notebook:lab-3.6.3
+#ARG LAB_BASE=jupyter/base-notebook:lab-4.0.7
+ARG LAB_BASE=quay.io/jupyter/base-notebook:lab-4.2.0
 
 # minimal, default (empty), full 
 ARG ENV
@@ -31,33 +30,34 @@ RUN apt-get update \
 ######################
 # TinyTeX            #
 ######################
-FROM builder_base AS builder_tinytex
-RUN useradd -ms /bin/bash jovyan
-USER jovyan
-WORKDIR /home/jovyan
-COPY Artefacts/TeXLive /tmp/
-RUN TEXDIR="${HOME}/.TinyTeX" && \
-    TINYTEX_INSTALLER="installer-unix" && \
-    BINDIR="${HOME}/bin" && \
-    mkdir -p "${BINDIR}" && \ 
-    TINYTEX_URL="https://github.com/rstudio/tinytex-releases/releases/download/daily/$TINYTEX_INSTALLER" && \
-    cd /tmp && \
-    wget --no-verbose --retry-connrefused -O ${TINYTEX_INSTALLER}.tar.gz ${TINYTEX_URL}.tar.gz && \
-    tar zxf ${TINYTEX_INSTALLER}.tar.gz && \
-    ./install.sh && \
-    mkdir -p "${TEXDIR}" && \
-    mv texlive/* "${TEXDIR}" && \
-    rm -r texlive "${TINYTEX_INSTALLER}.tar.gz" install.sh
+#FROM builder_base AS builder_tinytex
+#RUN useradd -ms /bin/bash jovyan
+#USER jovyan
+#WORKDIR /home/jovyan
+#COPY Artefacts/TeXLive /tmp/
 
-RUN TEXDIR="${HOME}/.TinyTeX" && \ 
-    cd ${TEXDIR}/bin/*/ && \
-    ./tlmgr update --self --all && \
-    ./tlmgr path add && \
-    ./fmtutil-sys --all && \
-    ./tlmgr postaction install script xetex  # GH issue #313 && \
-    ./tlmgr option repository ctan && \
-    ./tlmgr paper a4 && \
-    ./tlmgr install $(cat /tmp/TeXLive|grep --invert-match "^#")
+#RUN TEXDIR="${HOME}/.TinyTeX" && \
+#    TINYTEX_INSTALLER="installer-unix" && \
+#    BINDIR="${HOME}/bin" && \
+#    mkdir -p "${BINDIR}" && \ 
+#    cd /tmp && \
+#    TINYTEX_URL="https://github.com/rstudio/tinytex-releases/releases/download/daily/$TINYTEX_INSTALLER" && \
+#    wget --no-verbose --retry-connrefused -O ${TINYTEX_INSTALLER}.tar.gz ${TINYTEX_URL}.tar.gz && \
+#    tar zxf ${TINYTEX_INSTALLER}.tar.gz && \
+#    ./install.sh && \
+#    mkdir -p "${TEXDIR}" && \
+#    mv texlive/* "${TEXDIR}" && \
+#    rm -r texlive "${TINYTEX_INSTALLER}.tar.gz" install.sh
+
+#RUN TEXDIR="${HOME}/.TinyTeX" && \ 
+#    cd ${TEXDIR}/bin/*/ && \
+#    ./tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet && \
+#    ./tlmgr update --self --all && \
+#    ./tlmgr path add && \
+#    ./fmtutil-sys --all && \
+#    ./tlmgr postaction install script xetex  # GH issue #313 && \
+#    ./tlmgr paper a4 && \
+#    ./tlmgr install $(cat /tmp/TeXLive|grep --invert-match "^#")
 
 ###############
 # ZSH         #
@@ -153,8 +153,14 @@ USER root
 ENV NEEDED_WORK_DIRS .ssh
 ENV NEEDED_WORK_FILES .gitconfig
 
+ENV PLANTUML_VERSION=v1.2024.0
 ENV PLANTUML=/usr/share/plantuml/plantuml.jar
-RUN ln -s /usr/share/plantuml/plantuml.jar /usr/local/bin/
+
+RUN mkdir -p /usr/share/plantuml && \
+    wget --no-verbose \
+      "https://github.com/plantuml/plantuml/releases/download/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION#?}.jar" \
+      -O /usr/share/plantuml/plantuml.jar &&\
+  ln -s /usr/share/plantuml/plantuml.jar /usr/local/bin/
 
 # Install needed apt packages
 COPY Artefacts/apt_packages* /tmp/
@@ -164,8 +170,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install quarto
-RUN wget --no-verbose --output-document=/tmp/quarto.deb https://github.com/quarto-dev/quarto-cli/releases/download/v1.3.361/quarto-1.3.361-linux-$(echo $TARGETPLATFORM|cut -d '/' -f 2).deb && \
+ARG QUARTO_VERSION=1.4.549
+RUN wget --no-verbose --output-document=/tmp/quarto.deb https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-$(echo $TARGETPLATFORM|cut -d '/' -f 2).deb && \
   dpkg -i /tmp/quarto.deb && \
+  quarto add quarto-ext/include-code-files --no-prompt && \
   rm /tmp/quarto.deb
 
 # For window manager remote access via VNC
@@ -224,7 +232,7 @@ RUN echo -e "\e[93m***** Install Python packages ****\e[38;5;241m" && \
             python3 -m zsh_jupyter_kernel.install --sys-prefix
 RUN if [[ "${ENV}" != "minimal" ]] ; then \
         echo -e "\e[93m**** Installs Code Server Web ****\e[38;5;241m" && \
-                curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/opt --method=standalone --version=4.15.0 && \
+                curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/opt --method=standalone --version=4.21.0 && \
                 mkdir -p ${CODESERVERDATA_DIR} &&\
                 mkdir -p ${CODESERVEREXT_DIR} && \
                 PATH=/opt/bin:$PATH code-server \
@@ -306,8 +314,14 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
       tar --directory="/home/jovyan/.cache/gitstatus" -zx
 
 # Tiny TeX installation
-COPY --chown=$NB_UID:$NB_GID --from=builder_tinytex /home/jovyan/.TinyTeX /home/jovyan/.TinyTeX
-RUN ${HOME}/.TinyTeX/bin/*/tlmgr path add
+#COPY --chown=$NB_UID:$NB_GID --from=builder_tinytex /home/jovyan/.TinyTeX /home/jovyan/.TinyTeX
+#RUN ${HOME}/.TinyTeX/bin/*/tlmgr path add
+
+RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
+    wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | sh && \
+    tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet &&\
+    tlmgr paper a4 && \
+    tlmgr install $(cat /tmp/TeXLive|grep --invert-match "^#")	
 
 COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
 

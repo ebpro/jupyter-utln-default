@@ -17,4 +17,4 @@ git config --get fetch.prune&>/dev/null || \
 
 # Adds github sshkey if it does not exists (WARNING DANGEROUS)
 ( ssh-keygen -F github.com &>/dev/null ) || \
-    ( ssh-keyscan github.com >> /home/jovyan/.ssh/known_hosts )
+    ( ssh-keyscan github.com >> /home/$NB_USER/.ssh/known_hosts )
