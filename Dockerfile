@@ -317,11 +317,14 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 #COPY --chown=$NB_UID:$NB_GID --from=builder_tinytex /home/jovyan/.TinyTeX /home/jovyan/.TinyTeX
 #RUN ${HOME}/.TinyTeX/bin/*/tlmgr path add
 
+
+COPY Artefacts/TeXLive /tmp/
+
 RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
     wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | sh && \
     tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet &&\
     tlmgr paper a4 && \
-    tlmgr install $(cat /tmp/TeXLive|grep --invert-match "^#")	
+    tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#")	
 
 COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
 
