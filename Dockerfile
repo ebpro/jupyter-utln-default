@@ -322,7 +322,6 @@ COPY Artefacts/TeXLive /tmp/
 
 RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
     wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | sh && \
-    tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet &&\
     tlmgr paper a4 && \
     tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#")	
 
