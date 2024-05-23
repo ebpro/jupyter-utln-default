@@ -48,7 +48,7 @@ jobs:
 #          registry: ${{ secrets.PRIVATEHUB_HOSTNAME }}
 #          username: ${{ secrets.PRIVATEHUB_USERNAME }}
 #          password: ${{ secrets.PRIVATEHUB_TOKEN }}          
-      - uses: webfactory/ssh-agent@v0.8.0
+      - uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       - name: Set up Docker Buildx
@@ -81,7 +81,7 @@ jobs:
 #          cache-from: type=registry,ref=${{ secrets.PRIVATEHUB_HOSTNAME }}/${{ secrets.PRIVATEHUB_USERNAME }}/${{ env.REPOSITORY_NAME }}:buildcache
 #          cache-to: type=registry,ref=${{ secrets.PRIVATEHUB_HOSTNAME }}/${{ secrets.PRIVATEHUB_USERNAME }}/${{ env.REPOSITORY_NAME }}:buildcache,mode=min,compression=zstd
       - name: Update repo description
-        uses: peter-evans/dockerhub-description@v3
+        uses: peter-evans/dockerhub-description@v4
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
