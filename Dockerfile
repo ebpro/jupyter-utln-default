@@ -329,7 +329,8 @@ RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
     wget http://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh && \
     chmod +x update-tlmgr-latest.sh && ./update-tlmgr-latest.sh && \
     tlmgr update --all && \
-    tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#")	
+    tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#") && \
+    fmtutil -sys --all	
 
 COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
 

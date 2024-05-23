@@ -16,7 +16,7 @@ done
 
 for subfile in $NEEDED_WORK_FILES; do
 		file="/home/$NB_USER/work/$subfile"
-		ln -s "$file" "/home/$NB_USER/$subfile"
+		ln -sf "$file" "/home/$NB_USER/$subfile"
         if [ ! -f "$file" ]; then
         	echo Creating "$file for group ${NB_GID}"
         	touch "$file"        
