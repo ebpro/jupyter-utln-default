@@ -11,9 +11,11 @@ jobs:
     name: build-push-updaterepo
     uses: ebpro/gh-actions-shared-docker/.github/workflows/ci-shareable-docker-qemu.yml@develop
     with:
+        runs-on: arc-runner-set-compute-lsis
         env-list: >
           [ 
             "minimal",
             ""
           ]
     secrets: inherit
+    
