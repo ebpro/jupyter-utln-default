@@ -9,6 +9,17 @@ ARG ENV
 # Persistent data directory (user working directory)
 ARG WORK_DIR=/home/jovyan/work
 
+# directory for given materials (git_provider/account/repo/...).
+ARG MATERIALS_DIR=$WORK_DIR/materials
+ARG NOTEBOOKS_DIR=$MATERIALS_DIR
+
+# CODE SERVER
+ARG CODESERVER_DIR=/opt/codeserver
+ARG CODESERVEREXT_DIR=${CODESERVER_DIR}/extensions
+ARG CODE_WORKINGDIR=${WORK_DIR}
+ARG CODESERVERDATA_DIR=${CODE_WORKINGDIR}/.config/codeserver/data
+ARG CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/code-server/config.yaml
+
 #######################
 # BASE BUILDER        #
 #######################
