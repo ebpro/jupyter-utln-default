@@ -23,3 +23,6 @@ for subfile in $NEEDED_WORK_FILES; do
         fi
 		chown -R $NB_USER "$file"
 done
+
+chown -R $NB_USER /shared-data
+

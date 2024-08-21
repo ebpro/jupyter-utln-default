@@ -8,16 +8,6 @@ ARG ENV
 ## GENERAL
 # Persistent data directory (user working directory)
 ARG WORK_DIR=/home/jovyan/work
-# directory for given materials (git_provider/account/repo/...).
-ARG MATERIALS_DIR=$WORK_DIR/materials
-ARG NOTEBOOKS_DIR=$MATERIALS_DIR
-
-# CODE SERVER
-ARG CODESERVER_DIR=/opt/codeserver
-ARG CODESERVEREXT_DIR=${CODESERVER_DIR}/extensions
-ARG CODE_WORKINGDIR=${WORK_DIR}
-ARG CODESERVERDATA_DIR=${CODE_WORKINGDIR}/.config/codeserver/data
-ARG CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/code-server/config.yaml
 
 #######################
 # BASE BUILDER        #
@@ -26,38 +16,6 @@ FROM ubuntu AS builder_base
 RUN apt-get update \
   && apt-get install -y curl git wget zsh fontconfig \
   && rm -rf /var/lib/apt/lists/*
-
-######################
-# TinyTeX            #
-######################
-#FROM builder_base AS builder_tinytex
-#RUN useradd -ms /bin/bash jovyan
-#USER jovyan
-#WORKDIR /home/jovyan
-#COPY Artefacts/TeXLive /tmp/
-
-#RUN TEXDIR="${HOME}/.TinyTeX" && \
-#    TINYTEX_INSTALLER="installer-unix" && \
-#    BINDIR="${HOME}/bin" && \
-#    mkdir -p "${BINDIR}" && \ 
-#    cd /tmp && \
-#    TINYTEX_URL="https://github.com/rstudio/tinytex-releases/releases/download/daily/$TINYTEX_INSTALLER" && \
-#    wget --no-verbose --retry-connrefused -O ${TINYTEX_INSTALLER}.tar.gz ${TINYTEX_URL}.tar.gz && \
-#    tar zxf ${TINYTEX_INSTALLER}.tar.gz && \
-#    ./install.sh && \
-#    mkdir -p "${TEXDIR}" && \
-#    mv texlive/* "${TEXDIR}" && \
-#    rm -r texlive "${TINYTEX_INSTALLER}.tar.gz" install.sh
-
-#RUN TEXDIR="${HOME}/.TinyTeX" && \ 
-#    cd ${TEXDIR}/bin/*/ && \
-#    ./tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet && \
-#    ./tlmgr update --self --all && \
-#    ./tlmgr path add && \
-#    ./fmtutil-sys --all && \
-#    ./tlmgr postaction install script xetex  # GH issue #313 && \
-#    ./tlmgr paper a4 && \
-#    ./tlmgr install $(cat /tmp/TeXLive|grep --invert-match "^#")
 
 ###############
 # ZSH         #
@@ -72,9 +30,9 @@ RUN echo -e "\e[93m**** Configure a nice zsh environment ****\e[38;5;241m" && \
         git clone --recursive https://github.com/sorin-ionescu/prezto.git "$HOME/.zprezto" && \
         zsh -c /tmp/initzsh.sh && \
         sed -i -e "s/zstyle ':prezto:module:prompt' theme 'sorin'/zstyle ':prezto:module:prompt' theme 'powerlevel10k'/" $HOME/.zpreztorc && \
-        echo "[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh" >> $HOME/.zshrc && \
-        echo "PATH=/opt/bin:$HOME/bin:$PATH" >> $HOME/.zshrc
-RUN wget --no-verbose --output-document=$HOME/.zprezto/modules/completion/external/src/_docker https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker
+        echo "[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh" >> "$HOME"/.zshrc && \
+        echo "PATH=/opt/bin:$HOME/bin:$PATH" >> "$HOME"/.zshrc
+RUN wget --no-verbose --output-document="$HOME"/.zprezto/modules/completion/external/src/_docker https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker
 
 ############
 ## DOCKER ##
