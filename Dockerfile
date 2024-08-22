@@ -1,6 +1,6 @@
 # THE BASE IMAGE
 #ARG LAB_BASE=jupyter/base-notebook:lab-4.0.7
-ARG LAB_BASE=quay.io/jupyter/base-notebook:lab-4.2.0
+ARG LAB_BASE=quay.io/jupyter/base-notebook:lab-4.2.4
 
 # minimal, default (empty), full 
 ARG ENV
@@ -119,10 +119,10 @@ USER root
 # Set dirs and files that have to exist in $HOME (not persistent)
 # create and link them in $HOME/work (to become persistent) after notebook start
 # usefull for config files like .gitconfig, .ssh, ...
-ENV NEEDED_WORK_DIRS .ssh
-ENV NEEDED_WORK_FILES .gitconfig
+ENV NEEDED_WORK_DIRS=.ssh
+ENV NEEDED_WORK_FILES=.gitconfig
 
-ENV PLANTUML_VERSION=v1.2024.0
+ENV PLANTUML_VERSION=v1.2024.6
 ENV PLANTUML=/usr/share/plantuml/plantuml.jar
 
 RUN mkdir -p /usr/share/plantuml && \
@@ -139,7 +139,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install quarto
-ARG QUARTO_VERSION=1.4.549
+#ARG QUARTO_VERSION=1.4.549
+ARG QUARTO_VERSION=1.5.56
 RUN wget --no-verbose --output-document=/tmp/quarto.deb https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-$(echo $TARGETPLATFORM|cut -d '/' -f 2).deb && \
   dpkg -i /tmp/quarto.deb && \
   quarto add quarto-ext/include-code-files --no-prompt && \
@@ -199,12 +200,14 @@ RUN echo -e "\e[93m***** Install Python packages ****\e[38;5;241m" && \
         mamba env update -p ${CONDA_DIR} -f /tmp/environment.yml && \
         echo -e "\e[93m**** Install ZSH Kernel for Jupyter ****\e[38;5;241m" && \
             python3 -m zsh_jupyter_kernel.install --sys-prefix
+# ARG CODE_SERVER_VERSION=4.21.0
+ARG CODE_SERVER_VERSION=4.92.2
 RUN if [[ "${ENV}" != "minimal" ]] ; then \
         echo -e "\e[93m**** Installs Code Server Web ****\e[38;5;241m" && \
-                curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/opt --method=standalone --version=4.21.0 && \
+                curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/opt --method=standalone --version=${CODE_SERVER_VERSION} && \
                 mkdir -p ${CODESERVERDATA_DIR} &&\
                 mkdir -p ${CODESERVEREXT_DIR} && \
-                PATH=/opt/bin:$PATH code-server \
+                PATH=/opt/bin:${PATH} code-server \
                 	--user-data-dir ${CODESERVERDATA_DIR}\
                 	--extensions-dir ${CODESERVEREXT_DIR} \
                     $(cat /tmp/codeserver_extensions|sed 's/./--install-extension &/') ; \
@@ -240,7 +243,7 @@ RUN apt-get update && \
 USER $NB_USER
 
 RUN echo -e "\e[93m**** Update Jupyter config ****\e[38;5;241m" && \
-        mkdir -p $HOME/jupyter_data && \
+        mkdir -p ${HOME}/jupyter_data && \
         jupyter lab --generate-config && \
         sed -i -e '/c.ServerApp.root_dir =/ s/= .*/= "\/home\/jovyan\/work"/' \
             -e "s/# \(c.ServerApp.root_dir\)/\1/" \ 
@@ -251,7 +254,7 @@ RUN echo -e "\e[93m**** Update Jupyter config ****\e[38;5;241m" && \
             -e '/c.JupyterApp.log_level =/ s/= .*/= "DEBUG"/' \
             -e "/c.ServerApp.terminado_settings =/ s/= .*/= { 'shell_command': ['\/bin\/zsh'] }/" \
             -e 's/# \(c.ServerApp.terminado_settings\)/\1/' \ 
-        $HOME/.jupyter/jupyter_lab_config.py 
+        ${HOME}/.jupyter/jupyter_lab_config.py 
 
 # Sets the jupyter proxy for codeserver
 COPY code-server/jupyter_codeserver_config.py /tmp/
