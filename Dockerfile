@@ -25,7 +25,7 @@ ARG CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/code-server/config.yaml
 #######################
 FROM ubuntu AS builder_base
 RUN apt-get update \
-  && apt-get install -y curl git wget zsh fontconfig \
+  && apt-get install -y curl fontconfig git wget zsh \
   && rm -rf /var/lib/apt/lists/*
 
 ###############
@@ -36,14 +36,14 @@ RUN useradd -ms /bin/bash jovyan
 USER jovyan
 WORKDIR /home/jovyan
 
-ADD zsh/initzsh.sh /tmp/initzsh.sh
+COPY zsh/initzsh.sh /tmp/initzsh.sh
 RUN echo -e "\e[93m**** Configure a nice zsh environment ****\e[38;5;241m" && \
         git clone --recursive https://github.com/sorin-ionescu/prezto.git "$HOME/.zprezto" && \
         zsh -c /tmp/initzsh.sh && \
         sed -i -e "s/zstyle ':prezto:module:prompt' theme 'sorin'/zstyle ':prezto:module:prompt' theme 'powerlevel10k'/" $HOME/.zpreztorc && \
         echo "[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh" >> "$HOME"/.zshrc && \
         echo "PATH=/opt/bin:$HOME/bin:$PATH" >> "$HOME"/.zshrc
-RUN wget --no-verbose --output-document="$HOME"/.zprezto/modules/completion/external/src/_docker https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker
+ADD https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker "$HOME"/.zprezto/modules/completion/external/src/_docker
 
 ############
 ## DOCKER ##
@@ -240,8 +240,6 @@ RUN apt-get update && \
   apt-get install --yes --no-install-recommends chromium chromium-sandbox  && \
   rm -rf /var/lib/apt/lists/*
 
-RUN mkdir /shared-data
-
 USER $NB_USER
 
 RUN echo -e "\e[93m**** Update Jupyter config ****\e[38;5;241m" && \
@@ -307,6 +305,8 @@ RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
     fmtutil -sys --all	
 
 COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
+
+RUN fmtutil-sys --all
 
 # Generate 
 ARG CACHEBUST=4

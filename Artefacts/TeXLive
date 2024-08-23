@@ -5,14 +5,16 @@ environ
 fancyhdr
 fontawesome5
 fvextra
+hyphen-french
 koma-script
 lineno
 pdfcol
 pgf
+soul
 svg
 tcolorbox
 tikzfill
 transparent
 upquote
 xpatch
-soul
+
