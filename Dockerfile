@@ -240,6 +240,8 @@ RUN apt-get update && \
   apt-get install --yes --no-install-recommends chromium chromium-sandbox  && \
   rm -rf /var/lib/apt/lists/*
 
+RUN mkdir /shared-data
+
 USER $NB_USER
 
 RUN echo -e "\e[93m**** Update Jupyter config ****\e[38;5;241m" && \
