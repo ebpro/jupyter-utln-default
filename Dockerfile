@@ -40,10 +40,10 @@ COPY zsh/initzsh.sh /tmp/initzsh.sh
 RUN echo -e "\e[93m**** Configure a nice zsh environment ****\e[38;5;241m" && \
         git clone --recursive https://github.com/sorin-ionescu/prezto.git "$HOME/.zprezto" && \
         zsh -c /tmp/initzsh.sh && \
-        sed -i -e "s/zstyle ':prezto:module:prompt' theme 'sorin'/zstyle ':prezto:module:prompt' theme 'powerlevel10k'/" $HOME/.zpreztorc && \
+        sed -i -e "s/zstyle ':prezto:module:prompt' theme 'sorin'/zstyle ':prezto:module:prompt' theme 'powerlevel10k'/" ${HOME}/.zpreztorc && \
         echo "[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh" >> "$HOME"/.zshrc && \
-        echo "PATH=/opt/bin:$HOME/bin:$PATH" >> "$HOME"/.zshrc
-ADD https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker "$HOME"/.zprezto/modules/completion/external/src/_docker
+        echo "PATH=/opt/bin:${HOME}/bin:${PATH}" >> "$HOME"/.zshrc && \
+        wget https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker -O "$HOME"/.zprezto/modules/completion/external/src/_docker
 
 ############
 ## DOCKER ##
@@ -135,7 +135,8 @@ RUN mkdir -p /usr/share/plantuml && \
 COPY Artefacts/apt_packages* /tmp/
 RUN apt-get update && \
 	  apt-get install -qq --yes --no-install-recommends \
-		  $(cat /tmp/apt_packages_minimal|grep --invert-match "^#") $(if [ "${ENV}" != "minimal" ]; then cat /tmp/apt_*|grep --invert-match "^#"; fi) && \ 
+		  $(cat /tmp/apt_packages_minimal|grep --invert-match "^#") \
+      $(if [ "${ENV}" != "minimal" ]; then cat /tmp/apt_*|grep --invert-match "^#"; fi) && \ 
     rm -rf /var/lib/apt/lists/*
 
 # Install quarto
@@ -204,7 +205,8 @@ RUN echo -e "\e[93m***** Install Python packages ****\e[38;5;241m" && \
 ARG CODE_SERVER_VERSION=4.92.2
 RUN if [[ "${ENV}" != "minimal" ]] ; then \
         echo -e "\e[93m**** Installs Code Server Web ****\e[38;5;241m" && \
-                curl -fsSL https://code-server.dev/install.sh | sh -s -- --prefix=/opt --method=standalone --version=${CODE_SERVER_VERSION} && \
+                curl -fsSL https://code-server.dev/install.sh | \
+                  sh -s -- --prefix=/opt --method=standalone --version=${CODE_SERVER_VERSION} && \
                 mkdir -p ${CODESERVERDATA_DIR} &&\
                 mkdir -p ${CODESERVEREXT_DIR} && \
                 PATH=/opt/bin:${PATH} code-server \
@@ -226,8 +228,11 @@ COPY --chown=$NB_USER:$NB_GID conda-activate.sh /home/$NB_USER/
 # Configure nbgrader
 COPY nbgrader_config.py /etc/jupyter/nbgrader_config.py
 
-RUN mkdir -p $HOME/.config $HOME/bin $HOME/.local $HOME/.cache $HOME/.ipython $HOME/.TinyTeX &&\
-    chown -R  ${NB_UID}:${NB_GID} $HOME/bin $HOME/.config $HOME/.local $HOME/.cache $HOME/.ipython $HOME/.TinyTeX
+RUN mkdir -p ${HOME}/.config ${HOME}/bin ${HOME}/.local ${HOME}/.cache ${HOME}/.ipython ${HOME}/.TinyTeX &&\
+    chown -R  ${NB_UID}:${NB_GID} \
+      ${HOME}/bin ${HOME}/.config \
+      ${HOME}/.local ${HOME}/.cache \
+      ${HOME}/.ipython ${HOME}/.TinyTeX
 
 # Install Chromium from debian
 RUN apt-get update && \
@@ -289,11 +294,9 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 #COPY --chown=$NB_UID:$NB_GID --from=builder_tinytex /home/jovyan/.TinyTeX /home/jovyan/.TinyTeX
 #RUN ${HOME}/.TinyTeX/bin/*/tlmgr path add
 
-
 COPY Artefacts/TeXLive /tmp/
 
-
-RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
+RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
   wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh && \
 #  wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | sh && \
     tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet && \
@@ -302,11 +305,9 @@ RUN export PATH=(echo $HOME/.TinyTeX/bin/*):$PATH && \
     chmod +x update-tlmgr-latest.sh && ./update-tlmgr-latest.sh && \
     tlmgr update --all && \
     tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#") && \
-    fmtutil -sys --all	
-
+    fmtutil -sys --all && \
+   fix-permissions ${HOME}/.TinyTeX/
 COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
-
-RUN fmtutil-sys --all
 
 # Generate 
 ARG CACHEBUST=4
