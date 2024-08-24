@@ -5,6 +5,7 @@ environ
 fancyhdr
 fontawesome5
 fvextra
+grfext
 hyphen-french
 koma-script
 lineno
