@@ -297,11 +297,11 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 COPY Artefacts/TeXLive /tmp/
 
 RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
-  wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh && \
-    tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet && \
+  wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | \
+     sed 's/tlmgr option repository ctan/tlmgr option repository http:\/\/ctan.tetaneutral.net\/systems\/texlive\/tlnet/' \
+      | sh && \
+    tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet/ && \
     tlmgr paper a4 && \
-    #wget http://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh && \
-    #chmod +x update-tlmgr-latest.sh && ./update-tlmgr-latest.sh && \
     tlmgr update --self --all && \
     tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#") && \
     fmtutil -sys --all && \
@@ -309,12 +309,10 @@ RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
 COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
 
 # Generate 
-ARG CACHEBUST=4
 COPY versions/ /versions/
 COPY --chown=$NB_UID:$NB_GID README.md ${HOME}/
 RUN echo "## Software details" >> ${HOME}/README.md && \
     echo "" >> ${HOME}/README.md ; \
-    echo ${CACHEBUST} && \
     for versionscript in $(ls -d /versions/*) ; do \
       echo "Executing ($versionscript)"; \
       echo "" >> ${HOME}/README.md ; \
