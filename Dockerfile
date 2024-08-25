@@ -298,12 +298,11 @@ COPY Artefacts/TeXLive /tmp/
 
 RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
   wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh && \
-#  wget -qO- "https://yihui.name/gh/tinytex/tools/install-unx.sh" | sh && \
     tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet && \
     tlmgr paper a4 && \
-    wget http://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh && \
-    chmod +x update-tlmgr-latest.sh && ./update-tlmgr-latest.sh && \
-    tlmgr update --all && \
+    #wget http://mirror.ctan.org/systems/texlive/tlnet/update-tlmgr-latest.sh && \
+    #chmod +x update-tlmgr-latest.sh && ./update-tlmgr-latest.sh && \
+    tlmgr update --self --all && \
     tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#") && \
     fmtutil -sys --all && \
    fix-permissions ${HOME}/.TinyTeX/
