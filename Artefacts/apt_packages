@@ -1,5 +1,5 @@
 dbus-x11
-libgl1-mesa-glx
+# libgl1-mesa-glx
 terminator 
 xfce4
 xfce4-panel

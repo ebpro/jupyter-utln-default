@@ -1,6 +1,5 @@
 # THE BASE IMAGE
-#ARG LAB_BASE=jupyter/base-notebook:lab-4.0.7
-ARG LAB_BASE=quay.io/jupyter/base-notebook:lab-4.2.4
+ARG LAB_BASE=quay.io/jupyter/base-notebook:lab-4.2.5
 
 # minimal, default (empty), full 
 ARG ENV
@@ -140,7 +139,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install quarto
-#ARG QUARTO_VERSION=1.4.549
 ARG QUARTO_VERSION=1.5.56
 RUN wget --no-verbose --output-document=/tmp/quarto.deb https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-$(echo $TARGETPLATFORM|cut -d '/' -f 2).deb && \
   dpkg -i /tmp/quarto.deb && \
@@ -201,7 +199,6 @@ RUN echo -e "\e[93m***** Install Python packages ****\e[38;5;241m" && \
         mamba env update -p ${CONDA_DIR} -f /tmp/environment.yml && \
         echo -e "\e[93m**** Install ZSH Kernel for Jupyter ****\e[38;5;241m" && \
             python3 -m zsh_jupyter_kernel.install --sys-prefix
-# ARG CODE_SERVER_VERSION=4.21.0
 ARG CODE_SERVER_VERSION=4.92.2
 RUN if [[ "${ENV}" != "minimal" ]] ; then \
         echo -e "\e[93m**** Installs Code Server Web ****\e[38;5;241m" && \
@@ -235,15 +232,21 @@ RUN mkdir -p ${HOME}/.config ${HOME}/bin ${HOME}/.local ${HOME}/.cache ${HOME}/.
       ${HOME}/.ipython ${HOME}/.TinyTeX
 
 # Install Chromium from debian
+#RUN apt-get update && \
+#  apt-get install -qq --yes --no-install-recommends gnupg debian-archive-keyring && \
+#  apt-key add /usr/share/keyrings/debian-archive-keyring.gpg && \
+#  rm -rf /var/lib/apt/lists/*
+#COPY chromium/debian-for-nosnaps.list /etc/apt/sources.list.d/debian-for-nosnaps.list
+#COPY chromium/debian-for-nosnaps-preferences /etc/apt/preferences.d/debian-for-nosnaps
+#RUN apt-get update && \
+#  apt-get install --yes --no-install-recommends chromium chromium-sandbox  && \
+#  rm -rf /var/lib/apt/lists/*
+
+
 RUN apt-get update && \
-  apt-get install -qq --yes --no-install-recommends gnupg debian-archive-keyring && \
-  apt-key add /usr/share/keyrings/debian-archive-keyring.gpg && \
-  rm -rf /var/lib/apt/lists/*
-COPY chromium/debian-for-nosnaps.list /etc/apt/sources.list.d/debian-for-nosnaps.list
-COPY chromium/debian-for-nosnaps-preferences /etc/apt/preferences.d/debian-for-nosnaps
-RUN apt-get update && \
-  apt-get install --yes --no-install-recommends chromium chromium-sandbox  && \
-  rm -rf /var/lib/apt/lists/*
+  apt-get install -y chromium && \
+  rm -rf /var/lib/apt/lists/* && \
+  ln -s `which chromium` ${HOME}/.local/bin/chromium-browser
 
 USER $NB_USER
 
@@ -291,11 +294,7 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
       tar --directory="/home/jovyan/.cache/gitstatus" -zx
 
 # Tiny TeX installation
-#COPY --chown=$NB_UID:$NB_GID --from=builder_tinytex /home/jovyan/.TinyTeX /home/jovyan/.TinyTeX
-#RUN ${HOME}/.TinyTeX/bin/*/tlmgr path add
-
 COPY Artefacts/TeXLive /tmp/
-
 RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
   wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | \
      sed 's/tlmgr option repository ctan/tlmgr option repository http:\/\/ctan.tetaneutral.net\/systems\/texlive\/tlnet/' \

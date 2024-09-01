@@ -1,8 +1,6 @@
 {
   "CondaKernelSpecManager": {
-    "kernelspec_path": "--user",
-    "name_format": "{language} [env:{environment}]",
-    "conda_only": "false"
+    "name_format": "{language} [env:{environment}]"
   }
 }
 

@@ -1,9 +1,7 @@
 #!/bin/bash
-#docker build --progress=plain -t brunoe/${PWD##*/}:$(git rev-parse --abbrev-ref HEAD|tr '/' '-') .
-DOCKER_BUILDKIT=1 docker \
-    build --progress=plain \
-        --build-arg ENV \
-        --progress=plain \
-        --tag brunoe/${PWD##*/}:${ENV:+$ENV-}$(git rev-parse --abbrev-ref HEAD|tr '/' '-') \
-        $@ \
-        .
+REPO=brunoe
+docker build \
+	--progress=plain \
+	-t ${REPO}/${PWD##*/}:$(git rev-parse --abbrev-ref HEAD|tr '/' '-') \
+	$@ \
+	.
