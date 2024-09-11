@@ -5,19 +5,7 @@ ARG LAB_BASE=quay.io/jupyter/base-notebook:lab-4.2.5
 ARG ENV
 
 ## GENERAL
-# Persistent data directory (user working directory)
-ARG WORK_DIR=/home/jovyan/work
 
-# directory for given materials (git_provider/account/repo/...).
-ARG MATERIALS_DIR=$WORK_DIR/materials
-ARG NOTEBOOKS_DIR=$MATERIALS_DIR
-
-# CODE SERVER
-ARG CODESERVER_DIR=/opt/codeserver
-ARG CODESERVEREXT_DIR=${CODESERVER_DIR}/extensions
-ARG CODE_WORKINGDIR=${WORK_DIR}
-ARG CODESERVERDATA_DIR=${CODE_WORKINGDIR}/.config/codeserver/data
-ARG CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/code-server/config.yaml
 
 #######################
 # BASE BUILDER        #
@@ -44,54 +32,6 @@ RUN echo -e "\e[93m**** Configure a nice zsh environment ****\e[38;5;241m" && \
         echo "PATH=/opt/bin:${HOME}/bin:${PATH}" >> "$HOME"/.zshrc && \
         wget https://raw.githubusercontent.com/docker/cli/master/contrib/completion/zsh/_docker -O "$HOME"/.zprezto/modules/completion/external/src/_docker
 
-############
-## DOCKER ##
-############
-
-# No docker clients in minimal version
-FROM builder_base AS builder_docker_minimal
-
-FROM builder_docker_default AS builder_docker_full
-
-FROM builder_base AS builder_docker_default
-# Installs only the docker client and docker compose
-# easly used by mounting docker socket 
-#    docker run -v /var/run/docker.sock:/var/run/docker.socker
-# container must be started as root to change socket ownership before privilege drop
-ARG TARGETPLATFORM
-ARG BUILDPLATFORM
-ENV TARGETPLATFORM=${TARGETPLATFORM}
-ENV BUILDPLATFORM=${BUILDPLATFORM}
-
-ARG BIN_DIR
-ENV BIN_DIR=/usr/local/bin
-
-SHELL [ "/bin/bash", "-c" ]
-
-# Choose the latest docker version available for x86_64 and aarch64 
-RUN DOCKER_CLI_VERSION=$(comm -12  \
-  <(curl -s https://download.docker.com/linux/static/stable/aarch64/ | \
-      sed -n 's/.*docker-\([0-9]*\.[0-9]*\.[0-9]*\).tgz.*/\1/p' | tail -n1) \
-  <(curl -s https://download.docker.com/linux/static/stable/x86_64/ | \
-      sed -n 's/.*docker-\([0-9]*\.[0-9]*\.[0-9]*\).tgz.*/\1/p' | tail -n1)) && \
-if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-		ARCH_LEG=x86_64; \
-		ARCH=amd64; \
-	elif [ "$TARGETPLATFORM" = "linux/arm64/v8" ] || [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-		ARCH_LEG=aarch64; \
-		ARCH=arm64; \
-	else \
-		ARCH_LEG=amd64; \
-		ARCH=amd64; \
-	fi && \
-echo -e "\e[93m**** Installs docker client ****\e[38;5;241m"  && \
-wget --no-verbose --output-document=- "https://download.docker.com/linux/static/stable/${ARCH_LEG}/docker-${DOCKER_CLI_VERSION}.tgz" | \ 
-      tar --directory="${BIN_DIR}" --strip-components=1 -zx docker/docker && \
-chmod +x "${BIN_DIR}/docker" && \
-echo "done"
-
-FROM builder_docker_${ENV:-default} AS builder_docker
-
 ########### MAIN IMAGE ###########
 FROM ${LAB_BASE}
 
@@ -99,19 +39,19 @@ ARG ENV=default
 
 ARG TARGETPLATFORM
 ARG BUILDPLATFORM
-RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM"
 
-# Set defaults directories
 # Persistent data directory (user working directory)
-ARG WORK_DIR=$HOME/work
-# directory for given materials (git_provider/account/repo/...).
-ARG MATERIALS_DIR=$WORK_DIR/materials
-ARG NOTEBOOKS_DIR=$MATERIALS_DIR
+ENV WORK_DIR=/home/jovyan/work
+# Directory for given materials (git_provider/account/repo/...).
+ENV MATERIALS_DIR=$WORK_DIR/materials
+# Directory to mounts notebooks
+ENV NOTEBOOKS_DIR=$MATERIALS_DIR/local
 
-ENV WORK_DIR=${WORK_DIR}
-ENV MATERIALS_DIR=${MATERIALS_DIR}
-ENV NOTEBOOKS_DIR=${NOTEBOOKS_DIR} 
 ENV PATH=${HOME}/bin:/opt/bin:${PATH}
+
+RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM" && \
+    npm config set registry https://nexus.ebruno.fr/repository/npm-proxy && \
+    mkdir -p "$MATERIALS_DIR" "NOTEBOOKS_DIR"
 
 USER root
 
@@ -121,14 +61,12 @@ USER root
 ENV NEEDED_WORK_DIRS=.ssh
 ENV NEEDED_WORK_FILES=.gitconfig
 
-ENV PLANTUML_VERSION=v1.2024.6
-ENV PLANTUML=/usr/share/plantuml/plantuml.jar
+ENV PLANTUML_VERSION=v1.2024.7
+ENV PLANTUML_JAR=/usr/share/plantuml/plantuml.jar
 
 RUN mkdir -p /usr/share/plantuml && \
-    wget --no-verbose \
-      "https://github.com/plantuml/plantuml/releases/download/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION#?}.jar" \
-      -O /usr/share/plantuml/plantuml.jar &&\
-  ln -s /usr/share/plantuml/plantuml.jar /usr/local/bin/
+   ln -s "$PLANTUML_JAR" /usr/local/bin/
+ADD "https://github.com/plantuml/plantuml/releases/download/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION#?}.jar" "${PLANTUML_JAR}" 
 
 # Install needed apt packages
 COPY Artefacts/apt_packages* /tmp/
@@ -139,7 +77,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install quarto
-ARG QUARTO_VERSION=1.5.56
+ARG QUARTO_VERSION=1.5.57
 RUN wget --no-verbose --output-document=/tmp/quarto.deb https://github.com/quarto-dev/quarto-cli/releases/download/v${QUARTO_VERSION}/quarto-${QUARTO_VERSION}-linux-$(echo $TARGETPLATFORM|cut -d '/' -f 2).deb && \
   dpkg -i /tmp/quarto.deb && \
   quarto add quarto-ext/include-code-files --no-prompt && \
@@ -171,10 +109,24 @@ COPY --chown=$NB_UID:$NB_GID zsh/p10k.zsh $HOME/.p10k.zsh
 RUN --mount=type=bind,from=builder_zsh,source=/home/jovyan,target=/user \
     cp -a /user/.z* ${HOME} && \
     fix-permissions ${HOME}/.z* ${HOME}/.p10k.zsh
+# Preinstall gitstatusd
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+		ARCH_LEG=x86_64; \
+		ARCH=amd64; \
+	elif [ "$TARGETPLATFORM" = "linux/arm64/v8" ] || [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+		ARCH_LEG=aarch64; \
+		ARCH=arm64; \
+	else \
+		ARCH_LEG=amd64; \
+		ARCH=amd64; \
+	fi && \
+    mkdir -p /home/jovyan/.cache/gitstatus && \ 
+    curl -sL "https://github.com/romkatv/gitstatus/releases/download/v1.5.4/gitstatusd-linux-${ARCH_LEG}.tar.gz" | \
+      tar --directory="/home/jovyan/.cache/gitstatus" -zx
 
 ## DOCKER
 # Install docker client binaries
-COPY --from=builder_docker /usr/local/bin/docker* /usr/local/bin/
+COPY --from=docker:cli /usr/local/bin/docker* /usr/local/bin/
 COPY --from=docker/buildx-bin /buildx /usr/libexec/docker/cli-plugins/docker-buildx
 COPY --from=docker/compose-bin /docker-compose /usr/libexec/docker/cli-plugins/docker-compose
 
@@ -182,24 +134,23 @@ COPY --from=docker/compose-bin /docker-compose /usr/libexec/docker/cli-plugins/d
 COPY Artefacts/environment.yml /tmp
 COPY Artefacts/requirements.txt /tmp
 
-## CODE SERVER
-ARG CODESERVER_DIR
-ARG CODESERVEREXT_DIR
-ARG CODE_WORKINGDIR
-ARG CODESERVERDATA_DIR
-ENV CODESERVER_DIR=${CODESERVER_DIR}
-ENV CODESERVEREXT_DIR=${CODESERVEREXT_DIR}
-ENV CODE_WORKINGDIR=${CODE_WORKINGDIR}
-ENV CODESERVERDATA_DIR=${CODESERVERDATA_DIR}
-COPY Artefacts/codeserver_extensions /tmp/
-
 # Installs Python packages and codeserver (if needed)
 RUN echo -e "\e[93m***** Install Python packages ****\e[38;5;241m" && \
         pip install -r /tmp/requirements.txt && \
         mamba env update -p ${CONDA_DIR} -f /tmp/environment.yml && \
         echo -e "\e[93m**** Install ZSH Kernel for Jupyter ****\e[38;5;241m" && \
             python3 -m zsh_jupyter_kernel.install --sys-prefix
+
+## CODE SERVER
 ARG CODE_SERVER_VERSION=4.92.2
+ENV CODESERVER_DIR=/opt/codeserver
+ENV CODESERVEREXT_DIR=${CODESERVER_DIR}/extensions
+ENV CODE_WORKINGDIR=${WORK_DIR}
+ENV CODESERVERDATA_DIR=${CODE_WORKINGDIR}/.config/codeserver/data
+ENV CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/code-server/config.yaml
+
+COPY Artefacts/codeserver_extensions /tmp/
+
 RUN if [[ "${ENV}" != "minimal" ]] ; then \
         echo -e "\e[93m**** Installs Code Server Web ****\e[38;5;241m" && \
                 curl -fsSL https://code-server.dev/install.sh | \
@@ -242,13 +193,26 @@ RUN mkdir -p ${HOME}/.config ${HOME}/bin ${HOME}/.local ${HOME}/.cache ${HOME}/.
 #  apt-get install --yes --no-install-recommends chromium chromium-sandbox  && \
 #  rm -rf /var/lib/apt/lists/*
 
-
-RUN apt-get update && \
-  apt-get install -y chromium && \
-  rm -rf /var/lib/apt/lists/* && \
-  ln -s `which chromium` ${HOME}/.local/bin/chromium-browser
+#RUN apt-get update && \
+#  apt-get install -y chromium && \
+#  rm -rf /var/lib/apt/lists/* && \
+#  ln -s `which chromium` ${HOME}/.local/bin/chromium-browser
 
 USER $NB_USER
+
+# Tiny TeX installation
+COPY Artefacts/TeXLive /tmp/
+RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
+  CI=true wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | \
+     sed 's/tlmgr option repository ctan/tlmgr option repository https:\/\/distrib-coffee.ipsl.jussieu.fr\/pub\/mirrors\/ctan\/systems\/texlive\/tlnet/' \
+      | sh && \
+    tlmgr option repository https://distrib-coffee.ipsl.jussieu.fr/pub/mirrors/ctan/systems/texlive/tlnet \
+    tlmgr paper a4 && \
+    tlmgr update --self --all && \
+    tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#") && \
+    fmtutil -sys --all && \
+   fix-permissions ${HOME}/.TinyTeX/
+COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
 
 RUN echo -e "\e[93m**** Update Jupyter config ****\e[38;5;241m" && \
         mkdir -p ${HOME}/jupyter_data && \
@@ -277,35 +241,6 @@ RUN if [[ "${ENV}" != "minimal" ]] ; then \
 # Files creation/setup in persistant space.
 # Git client default initialisation
 COPY before-notebook/ /usr/local/bin/before-notebook.d/
-
-# Preinstall gitstatusd
-RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-		ARCH_LEG=x86_64; \
-		ARCH=amd64; \
-	elif [ "$TARGETPLATFORM" = "linux/arm64/v8" ] || [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-		ARCH_LEG=aarch64; \
-		ARCH=arm64; \
-	else \
-		ARCH_LEG=amd64; \
-		ARCH=amd64; \
-	fi && \
-    mkdir -p /home/jovyan/.cache/gitstatus && \ 
-    curl -sL "https://github.com/romkatv/gitstatus/releases/download/v1.5.4/gitstatusd-linux-${ARCH_LEG}.tar.gz" | \
-      tar --directory="/home/jovyan/.cache/gitstatus" -zx
-
-# Tiny TeX installation
-COPY Artefacts/TeXLive /tmp/
-RUN export PATH=(echo ${HOME}/.TinyTeX/bin/*):${PATH} && \
-  wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | \
-     sed 's/tlmgr option repository ctan/tlmgr option repository http:\/\/ctan.tetaneutral.net\/systems\/texlive\/tlnet/' \
-      | sh && \
-    tlmgr option repository http://ctan.tetaneutral.net/systems/texlive/tlnet/ && \
-    tlmgr paper a4 && \
-    tlmgr update --self --all && \
-    tlmgr install --verify-repo=none $(cat /tmp/TeXLive|grep --invert-match "^#") && \
-    fmtutil -sys --all && \
-   fix-permissions ${HOME}/.TinyTeX/
-COPY --chown=$NB_UID:$NB_GID home/ /home/jovyan/
 
 # Generate 
 COPY versions/ /versions/
