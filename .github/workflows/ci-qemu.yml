@@ -1,4 +1,4 @@
-name: Multi Arch Docker QEMU CI
+name: Multi-Arch CI
 
 on:
   workflow_dispatch:
