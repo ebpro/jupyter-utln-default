@@ -1,13 +1,15 @@
-iplantuml
-jinja-yaml-magic
-jupyter-remote-desktop-proxy
-jupyter-tree-download
+
 # jupyterlab-code-formatter # To conda
 # sphinxcontrib-plantuml # To conda
 # sphinxcontrib-svg2pdfconverter
-zsh_jupyter_kernel
 # ngshare_exchange
-jupyterlab-quarto
-
-jupyterlab >=4.0.0
+bash_kernel
+iplantuml
+jinja-yaml-magic
 jupyter-cache
+jupyter-remote-desktop-proxy
+jupyter-tree-download
+jupyter-vscode-proxy
+jupyterlab
+jupyterlab-quarto
+zsh_jupyter_kernel

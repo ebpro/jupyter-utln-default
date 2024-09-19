@@ -11,32 +11,29 @@ def _get_code_server_cmd(port):
     working_dir = os.getenv("CODE_WORKINGDIR", ".")
 
     extensions_dir = os.getenv("CODESERVEREXT_DIR", None)
-    extra_extensions_dir = os.getenv("CODE_EXTRA_EXTENSIONSDIR", None)
 
     cmd = [
         executable,
         "--auth","none",
         "--disable-telemetry",
-        "--user-data-dir",os.getenv("CODESERVERDATA_DIR"),
-        "--port=" + str(port),
+        "--disable-update-check",
+        "--bind-addr","0.0.0.0:{port}",
+        "--user-data-dir",os.getenv("CODESERVERDATA_DIR")
     ]
 
     if extensions_dir:
         cmd += ["--extensions-dir", extensions_dir]
-
-    if extra_extensions_dir:
-        cmd += ["--extra-extensions-dir", extra_extensions_dir]
 
     cmd.append(working_dir)
     return cmd
 
 
 c.ServerProxy.servers = {
-  'code-server': {
+  'codeserver': {
     'command': _get_code_server_cmd,
     'timeout': 20,
     'launcher_entry': {
-      'title': 'VS Code IDE',
+      'title': 'VS Code',
       'icon_path': os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), "icons", "code-server.svg"),
     }
