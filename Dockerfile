@@ -11,9 +11,11 @@ ARG ENV
 # BASE BUILDER        #
 #######################
 FROM ubuntu AS builder_base
-RUN apt-get update \
-  && apt-get install -y curl fontconfig git wget zsh \
-  && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update &&\
+  apt-get install -y curl fontconfig git wget zsh &&\
+  rm -rf /var/lib/apt/lists/*
 
 ###############
 # ZSH         #
@@ -54,7 +56,7 @@ USER root
 RUN echo "I am running on $BUILDPLATFORM, building for $TARGETPLATFORM" && \
     npm config set registry https://nexus.ebruno.fr/repository/npm-proxy && \
     mkdir -p "$MATERIALS_DIR" "$NOTEBOOKS_DIR" && \
-    chown -R ${NB_UID}:${NB_GID} "$MATERIALS_DIR" "$NOTEBOOKS_DIR"
+    chown -R ${NB_UID}:${NB_GID} "$WORK_DIR" "$MATERIALS_DIR" "$NOTEBOOKS_DIR"
 
 # Set dirs and files that have to exist in $HOME (not persistent)
 # create and link them in $HOME/work (to become persistent) after notebook start
@@ -68,11 +70,13 @@ ENV PLANTUML_VERSION=v1.2024.7
 ENV PLANTUML_JAR=/usr/share/plantuml/plantuml.jar
 RUN mkdir -p /usr/share/plantuml && \
    ln -s "$PLANTUML_JAR" /usr/local/bin/
-ADD "https://github.com/plantuml/plantuml/releases/download/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION#?}.jar" "${PLANTUML_JAR}" 
+ADD --chown=$NB_UID:$NB_UID "https://github.com/plantuml/plantuml/releases/download/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION#?}.jar" "${PLANTUML_JAR}" 
 
 # Install needed apt packages
 COPY Artefacts/apt_packages* /tmp/
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+      apt-get update && \
 	  apt-get install -qq --yes --no-install-recommends \
 		  $(cat /tmp/apt_packages_minimal|grep --invert-match "^#") \
       $(if [ "${ENV}" != "minimal" ]; then cat /tmp/apt_*|grep --invert-match "^#"; fi) && \ 
@@ -110,7 +114,7 @@ RUN if [[ "${ENV}" != "minimal" ]] ; then \
 COPY --chown=$NB_UID:$NB_GID zsh/p10k.zsh $HOME/.p10k.zsh 
 RUN --mount=type=bind,from=builder_zsh,source=/home/jovyan,target=/user \
     cp -a /user/.z* ${HOME} && \
-    fix-permissions ${HOME}/.z* ${HOME}/.p10k.zsh
+    chown -R $NB_UID:$NB_GID ${HOME}/.z* ${HOME}/.p10k.zsh
 # Preinstall gitstatusd
 RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 		ARCH_LEG=x86_64; \
@@ -124,7 +128,8 @@ RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
 	fi && \
     mkdir -p /home/jovyan/.cache/gitstatus && \ 
     curl -sL "https://github.com/romkatv/gitstatus/releases/download/v1.5.4/gitstatusd-linux-${ARCH_LEG}.tar.gz" | \
-      tar --directory="/home/jovyan/.cache/gitstatus" -zx
+      tar --directory="/home/jovyan/.cache/gitstatus" -zx && \
+    chown -R $NB_UID:$NB_GID /home/jovyan/.cache/gitstatus
 
 ## DOCKER
 # Install docker client binaries
@@ -148,11 +153,11 @@ RUN echo -e "\e[93m***** Install Python packages ****\e[38;5;241m" && \
 ARG CODE_SERVER_VERSION=4.92.2
 ENV CODESERVER_DIR=/opt/codeserver
 # Extension are writable for users but not persistent
-ENV CODESERVEREXT_DIR=${HOME}/.local/share/code-server/extensions
+ENV CODESERVEREXT_DIR=${HOME}/.local/share/codeserver/extensions
 # Data are persistent and writable
 ENV CODE_WORKINGDIR=${WORK_DIR}
 ENV CODESERVERDATA_DIR=${CODE_WORKINGDIR}/.config/codeserver/data
-ENV CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/code-server/config.yaml
+ENV CODE_SERVER_CONFIG=${CODE_WORKINGDIR}/.config/codeserver/config.yaml
 
 COPY Artefacts/codeserver_extensions /tmp/
 
@@ -166,7 +171,7 @@ RUN if [[ "${ENV}" != "minimal" ]] ; then \
                 	--user-data-dir ${CODESERVERDATA_DIR}\
                 	--extensions-dir ${CODESERVEREXT_DIR} \
                     $(cat /tmp/codeserver_extensions|sed 's/./--install-extension &/') ; \
-        chown -R ${NB_UID}:${NB_GID} ${CODESERVEREXT_DIR} ; \
+        chown -R ${NB_UID}:${NB_GID} ${CODESERVEREXT_DIR} ${CODE_WORKINGDIR}/.config; \
     fi
 
 # Enable persistant conda env
@@ -277,8 +282,9 @@ COPY code-server/jupyter_codeserver_config.py /tmp/
 COPY --chown=$NB_USER:$NB_GID code-server/icons $HOME/.jupyter/icons
 RUN if [[ "${ENV}" != "minimal" ]] ; then \
     [[ ! -f /home/jovyan/.jupyter/jupyter_config.py ]] && touch /home/jovyan/.jupyter/jupyter_config.py ; \
-	  cat /tmp/jupyter_codeserver_config.py >> /home/jovyan/.jupyter/jupyter_config.py ; \
-  fi 
+	cat /tmp/jupyter_codeserver_config.py >> /home/jovyan/.jupyter/jupyter_config.py ; \
+    chown ${NB_UID}:${NB_GID} /home/jovyan/.jupyter/jupyter_config.py ; \
+    fi
 
 # Copy scripts that should be executed before notebook start
 # Files creation/setup in persistant space.
