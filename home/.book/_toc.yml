@@ -1,8 +1,0 @@
-format: jb-book #jb-article
-root: Book
-
-options:  # The options key will be applied to all chapters, but not sub-sections
-    numbered: True
-
-chapters: 
-  - glob: "*"

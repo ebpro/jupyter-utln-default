@@ -1,21 +1,36 @@
+# TexLive packages
+
+## Document Classes and Templates
+
 beamer
+koma-script
+
+## Typography and Text
+
+hyphen-french
+soul
+upquote
+
+## Layout and Structure
+
 bookmark
 caption
-environ
 fancyhdr
-fontawesome5
-fvextra
-grfext
-hyphen-french
-koma-script
 lineno
+
+## Graphics and Colors
+
+fontawesome5
 pdfcol
 pgf
-soul
 svg
-tcolorbox
 tikzfill
 transparent
-upquote
-xpatch
 
+## Utilities and Enhancements
+
+environ
+fvextra
+grfext
+tcolorbox
+xpatch

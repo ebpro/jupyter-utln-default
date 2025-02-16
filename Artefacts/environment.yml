@@ -1,16 +1,21 @@
-channels:
-- conda-forge
-- nodefaults
-- terradue
+name: jupyter-env
 
 dependencies:
-- jupyter-server-proxy
-- jupyterhub
-# - jupyterlab
-- jupyterlab-git
-- nb_conda_kernels
-- nbgitpuller
-- pandas
-- websockify
-- seaborn
-- jupyterlab_code_formatter
+  - python=3.11
+  ## Core Jupyter packages
+  - jupyter
+  - jupyterlab
+  - nb_conda_kernels
+  - nbgitpuller
+  - ipykernel
+  - ipython
+  
+  ## Data Science packages
+  #- numpy
+  #- pandas
+  #- matplotlib
+  #- seaborn
+  #- scikit-learn
+
+  ## Additional utilities
+  - pip

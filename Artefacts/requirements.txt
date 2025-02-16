@@ -1,9 +1,19 @@
+# Jupyter Kernels
 bash_kernel
+zsh_jupyter_kernel
+
+# Jupyter Extensions
+jupyter-cache
+
+# Development Tools
+black
+isort
+pylint
+
+# Documentation & Diagrams
 iplantuml
 jinja-yaml-magic
-jupyter-cache
-jupyter-remote-desktop-proxy
-jupyter-tree-download
-# jupyter-vscode-proxy
-jupyterlab-quarto
-zsh_jupyter_kernel
+
+# Testing
+nbval
+pytest-notebook
